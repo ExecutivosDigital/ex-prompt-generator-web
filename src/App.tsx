@@ -12,6 +12,8 @@ import CheckoutPage from "@/pages/CheckoutPage";
 import CongratulationsPage from "@/pages/CongratulationsPage";
 import DashboardPage from "@/pages/DashboardPage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import LandingPage1 from "@/pages/LandingPage1";
+import LandingPage2 from "@/pages/LandingPage2";
 import LoginPage from "@/pages/LoginPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 import ProfilePage from "@/pages/ProfilePage";
@@ -30,6 +32,10 @@ export default function App() {
       <AuthProvider>
         <ToastProvider>
           <Routes>
+            {/* Landing pages públicas */}
+            <Route path="/landing-page-1" element={<LandingPage1 />} />
+            <Route path="/landing-page-2" element={<LandingPage2 />} />
+
             {/* Public routes (não logado) */}
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<LoginPage />} />
@@ -40,7 +46,10 @@ export default function App() {
             {/* Checkout: logado mas não precisa ter pago */}
             <Route element={<PrivateRoute />}>
               <Route path="/checkout" element={<CheckoutPage />} />
-              <Route path="/checkout/parabens" element={<CongratulationsPage />} />
+              <Route
+                path="/checkout/parabens"
+                element={<CongratulationsPage />}
+              />
             </Route>
 
             {/* App: logado + pagou */}
@@ -57,9 +66,18 @@ export default function App() {
               {/* Training: logado + pagou, layout próprio */}
               <Route element={<TrainingLayout />}>
                 <Route path="/training" element={<TrainingPage />} />
-                <Route path="/training/:courseId" element={<TrainingCoursePage />} />
-                <Route path="/training/:courseId/:moduleId" element={<TrainingModulePage />} />
-                <Route path="/training/:courseId/:moduleId/:lessonId" element={<TrainingLessonPage />} />
+                <Route
+                  path="/training/:courseId"
+                  element={<TrainingCoursePage />}
+                />
+                <Route
+                  path="/training/:courseId/:moduleId"
+                  element={<TrainingModulePage />}
+                />
+                <Route
+                  path="/training/:courseId/:moduleId/:lessonId"
+                  element={<TrainingLessonPage />}
+                />
               </Route>
             </Route>
 

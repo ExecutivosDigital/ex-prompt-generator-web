@@ -201,3 +201,49 @@
     display: none;
   }
 }
+
+/* ─── Utilities used by landing pages (P1A / P1B) ─── */
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes glow-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(30px, -20px) scale(1.1); opacity: 1; }
+}
+
+@keyframes glow-drift-reverse {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  50% { transform: translate(-25px, 15px) scale(1.05); opacity: 0.9; }
+}
+
+@utility animate-fade-in-up {
+  animation: fade-in-up 0.7s ease-out both;
+}
+
+@utility animate-count-up {
+  animation: count-up 0.5s ease-out both;
+}
+
+@utility animate-glow-drift {
+  animation: glow-drift 8s ease-in-out infinite;
+}
+
+@utility animate-glow-drift-reverse {
+  animation: glow-drift-reverse 10s ease-in-out infinite;
+}
+
+@utility glass-light {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+}
