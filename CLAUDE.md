@@ -31,7 +31,7 @@ hotfix/*   ← emergência em produção (sai de main, retorna a main E staging)
 - Branches `feat/*`, `fix/*`, `chore/*` saem **sempre de `staging` atualizada**.
 - Branches `hotfix/*` saem **de `main`** e, ao mergear, devem ser replicadas em `staging` (via cherry-pick ou novo PR de sync).
 - Após o merge, a branch é **deletada automaticamente** (configurado no GitHub).
-- Use **squash merge** para PRs de feat/fix/chore em staging. Use **merge commit** (ou rebase) para o PR de staging → main, preservando o histórico.
+- Use **squash merge** em **todos** os PRs, inclusive na promoção `staging → main`. A proteção da `main` exige histórico linear — merge commit e rebase merge estão desabilitados. Cada release vira **um único commit** na `main`, enquanto a `staging` preserva o histórico granular dos PRs originais.
 
 ### Nomenclatura de branches
 
