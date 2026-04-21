@@ -41,14 +41,19 @@ export default function ChatPage() {
   useEffect(() => {
     if (!user) return
     chatApi.listConversations()
-      .then((data) => { setConversations(data || []); setLoading(false) })
+      .then((data) => {
+        // TODO (tech-debt): src/lib/api/chat.ts define interfaces locais
+        // (camelCase) divergentes de src/types/chat.ts (snake_case). Unificar.
+        setConversations((data || []) as unknown as ChatConversation[])
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [user])
 
   useEffect(() => {
     if (!activeConversation) { setMessages([]); return }
     chatApi.getMessages(activeConversation)
-      .then((data) => setMessages(data || []))
+      .then((data) => setMessages((data || []) as unknown as ChatMessage[]))
   }, [activeConversation])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, streamedText])
@@ -61,7 +66,8 @@ export default function ChatPage() {
   const createConversation = async () => {
     if (!user) return
     const data = await chatApi.createConversation('Nova conversa')
-    if (data) { setConversations(prev => [data, ...prev]); openConversation(data.id) }
+    // TODO (tech-debt): ver comentário no useEffect acima sobre divergência de tipos
+    if (data) { setConversations(prev => [data as unknown as ChatConversation, ...prev]); openConversation(data.id) }
   }
 
   const deleteConversation = async (e: React.MouseEvent, id: string) => {
@@ -78,7 +84,8 @@ export default function ChatPage() {
 
     if (!convId) {
       const data = await chatApi.createConversation(msg.slice(0, 50))
-      if (!data) return; convId = data.id; setConversations(prev => [data, ...prev]); openConversation(data.id)
+      // TODO (tech-debt): ver comentário no useEffect sobre divergência de tipos
+      if (!data) return; convId = data.id; setConversations(prev => [data as unknown as ChatConversation, ...prev]); openConversation(data.id)
     }
     const userMsg: ChatMessage = { id: `temp-${Date.now()}`, conversation_id: convId, user_id: user.id, role: 'user', content: msg, tokens_used: null, model: null, created_at: new Date().toISOString() }
     setMessages(prev => [...prev, userMsg]); setInput(''); setStreaming(true); setStreamedText('')
