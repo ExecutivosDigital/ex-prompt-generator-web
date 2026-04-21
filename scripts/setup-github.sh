@@ -23,6 +23,10 @@
 
 set -euo pipefail
 
+# Evita que Git Bash (MSYS2) reescreva endpoints como '/user' em caminhos de filesystem
+export MSYS_NO_PATHCONV=1
+export MSYS2_ARG_CONV_EXCL="*"
+
 # ---------- Util ----------
 c_red=$'\e[31m'; c_green=$'\e[32m'; c_yellow=$'\e[33m'; c_blue=$'\e[34m'; c_reset=$'\e[0m'
 info()  { echo "${c_blue}[info]${c_reset} $*"; }
@@ -36,12 +40,44 @@ command -v git >/dev/null 2>&1 || fail "git não encontrado."
 
 gh auth status >/dev/null 2>&1 || fail "gh não está autenticado. Rode 'gh auth login' primeiro."
 
-# Descobrir owner/repo
-REPO_INFO=$(gh repo view --json owner,name 2>/dev/null) || fail "Não foi possível identificar o repositório. Está na raiz de um repo clonado?"
-OWNER=$(echo "$REPO_INFO" | sed -n 's/.*"owner":{"login":"\([^"]*\)".*/\1/p')
-REPO=$(echo "$REPO_INFO" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p')
-[[ -n "$OWNER" && -n "$REPO" ]] || fail "Falha ao extrair owner/repo do gh."
+# Descobrir owner/repo usando o --jq interno do gh (mais robusto que parsear JSON na mão)
+OWNER=$(gh repo view --json owner --jq '.owner.login' 2>/dev/null) || fail "Não foi possível identificar o owner do repositório. Está na raiz de um repo clonado?"
+REPO=$(gh repo view --json name --jq '.name' 2>/dev/null) || fail "Não foi possível identificar o nome do repositório."
+[[ -n "$OWNER" && -n "$REPO" ]] || fail "Falha ao extrair owner/repo do gh (saída vazia)."
 info "Repositório detectado: ${OWNER}/${REPO}"
+
+# Verificar permissão de admin com fallbacks (branch protection exige admin)
+AUTH_USER=$(gh api user --jq '.login' 2>/dev/null) || fail "Não foi possível obter usuário autenticado."
+info "Usuário autenticado: ${AUTH_USER}"
+
+ADMIN="false"
+
+# Caso 1: o user autenticado é o owner direto do repo
+if [[ "$AUTH_USER" == "$OWNER" ]]; then
+  ADMIN="true"
+  ok "Você é owner direto do repositório — admin garantido."
+else
+  # Caso 2: checar o endpoint de permissions.admin do próprio repo
+  ADMIN_FIELD=$(gh api "repos/${OWNER}/${REPO}" --jq '.permissions.admin // false' 2>/dev/null || echo "false")
+  if [[ "$ADMIN_FIELD" == "true" ]]; then
+    ADMIN="true"
+    ok "Permissão admin confirmada via .permissions.admin."
+  else
+    # Caso 3: checar via endpoint de collaborator permission
+    PERM=$(gh api "repos/${OWNER}/${REPO}/collaborators/${AUTH_USER}/permission" --jq '.permission' 2>/dev/null || echo "")
+    if [[ "$PERM" == "admin" ]]; then
+      ADMIN="true"
+      ok "Permissão admin confirmada via collaborator permission."
+    fi
+  fi
+fi
+
+if [[ "$ADMIN" != "true" ]]; then
+  warn "A conta '${AUTH_USER}' NÃO tem permissão admin em ${OWNER}/${REPO}."
+  warn "Branch protection e configuração de repo exigem admin."
+  warn "Soluções: (1) logar com 'gh auth login' em uma conta admin, ou (2) pedir admin para o owner."
+  fail "Permissão insuficiente."
+fi
 
 # Confirmar com usuário
 echo ""
@@ -73,13 +109,13 @@ info "Aplicando branch protection em 'main'..."
 
 # Nota: required_status_checks fica null por enquanto — adicione 'lint-and-build'
 # depois que o workflow do CI rodar pela primeira vez, via:
-#   gh api -X PATCH "/repos/$OWNER/$REPO/branches/main/protection/required_status_checks" \
+#   gh api -X PATCH "repos/$OWNER/$REPO/branches/main/protection/required_status_checks" \
 #     -f strict=true -F "contexts[]=lint-and-build"
 
 gh api \
   --method PUT \
   -H "Accept: application/vnd.github+json" \
-  "/repos/${OWNER}/${REPO}/branches/main/protection" \
+  "repos/${OWNER}/${REPO}/branches/main/protection" \
   --input - <<'JSON' >/dev/null
 {
   "required_status_checks": null,
@@ -107,7 +143,7 @@ info "Aplicando branch protection em 'staging'..."
 gh api \
   --method PUT \
   -H "Accept: application/vnd.github+json" \
-  "/repos/${OWNER}/${REPO}/branches/staging/protection" \
+  "repos/${OWNER}/${REPO}/branches/staging/protection" \
   --input - <<'JSON' >/dev/null
 {
   "required_status_checks": null,
@@ -135,7 +171,7 @@ info "Configurando auto-delete de branches mergeadas e squash merge..."
 gh api \
   --method PATCH \
   -H "Accept: application/vnd.github+json" \
-  "/repos/${OWNER}/${REPO}" \
+  "repos/${OWNER}/${REPO}" \
   -F allow_squash_merge=true \
   -F allow_merge_commit=true \
   -F allow_rebase_merge=false \
@@ -154,17 +190,17 @@ warn "PRÓXIMO PASSO MANUAL (após primeiro CI rodar):"
 echo "   1. Abra um PR qualquer (ou push em staging) para disparar o workflow de CI."
 echo "   2. Depois que o CI rodar 1 vez, rode ESTE comando para tornar o check obrigatório em main:"
 echo ""
-echo "      gh api --method PATCH \\"
+echo "      MSYS_NO_PATHCONV=1 gh api --method PATCH \\"
 echo "        -H \"Accept: application/vnd.github+json\" \\"
-echo "        \"/repos/${OWNER}/${REPO}/branches/main/protection/required_status_checks\" \\"
+echo "        \"repos/${OWNER}/${REPO}/branches/main/protection/required_status_checks\" \\"
 echo "        -f strict=true \\"
 echo "        -F \"contexts[]=lint-and-build\""
 echo ""
 echo "   3. E este para staging:"
 echo ""
-echo "      gh api --method PATCH \\"
+echo "      MSYS_NO_PATHCONV=1 gh api --method PATCH \\"
 echo "        -H \"Accept: application/vnd.github+json\" \\"
-echo "        \"/repos/${OWNER}/${REPO}/branches/staging/protection/required_status_checks\" \\"
+echo "        \"repos/${OWNER}/${REPO}/branches/staging/protection/required_status_checks\" \\"
 echo "        -f strict=true \\"
 echo "        -F \"contexts[]=lint-and-build\""
 echo ""
