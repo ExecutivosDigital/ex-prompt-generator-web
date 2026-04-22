@@ -35,6 +35,7 @@ export async function createPayment(data: {
   amount: number;
   orderBump?: boolean;
   couponCode?: string;
+  installmentCount?: number;
   creditCard?: {
     holderName: string;
     number: string;
