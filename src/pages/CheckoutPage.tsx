@@ -300,6 +300,7 @@ export default function CheckoutPage() {
       const cpfClean = form.cpf.replace(/\D/g, '')
       const phoneClean = form.phone.replace(/\D/g, '')
 
+      const installmentCount = parseInt(form.installments, 10) || 1
       const result = await createPayment({
         billingType: paymentMethod === 'pix' ? 'PIX' : 'CREDIT_CARD',
         name: form.name,
@@ -310,6 +311,7 @@ export default function CheckoutPage() {
         orderBump,
         couponCode: couponApplied ? couponCode : undefined,
         ...(paymentMethod === 'credit_card' ? {
+          installmentCount,
           creditCard: {
             holderName: form.cardName,
             number: cardNumber,
