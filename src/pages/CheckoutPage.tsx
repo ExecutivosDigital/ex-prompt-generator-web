@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createPayment, validateCoupon as apiValidateCoupon } from '@/lib/api/checkout'
+import { ApiError } from '@/lib/api/client'
 import Logo from '@/components/shared/Logo'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
@@ -143,6 +144,14 @@ const ORDER_BUMP = {
   name: 'Módulo Avançado — Prompts de Escala',
   description: 'Pacote extra com prompts para quem quer escalar de R$100k para R$500k/mês',
   price: 19.90,
+}
+
+function formatCheckoutError(err: unknown): string {
+  if (err instanceof ApiError && err.errors.length > 1) {
+    return err.errors.map(e => `• ${e}`).join('\n')
+  }
+  if (err instanceof Error && err.message) return err.message
+  return 'Erro ao processar pagamento. Tente novamente.'
 }
 
 export default function CheckoutPage() {
@@ -346,7 +355,7 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       setLoading(false)
-      const message = err instanceof Error ? err.message : 'Erro ao processar pagamento'
+      const message = formatCheckoutError(err)
       toast(message, 'error')
     }
   }

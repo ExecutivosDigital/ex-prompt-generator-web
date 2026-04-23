@@ -67,7 +67,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
       className={cn('glass-strong rounded-xl px-4 py-3 flex items-center gap-3 min-w-[280px] max-w-[400px] shadow-lg')}
     >
       {icons[toast.type]}
-      <p className="text-sm text-brand-black flex-1">{toast.message}</p>
+      <p className="text-sm text-brand-black flex-1 whitespace-pre-line leading-snug">{toast.message}</p>
       <button onClick={() => onRemove(toast.id)} className="p-1 rounded hover:bg-brand-gray-200/50 cursor-pointer">
         <X size={14} className="text-brand-gray-400" />
       </button>

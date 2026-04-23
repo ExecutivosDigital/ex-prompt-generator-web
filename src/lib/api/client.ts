@@ -29,6 +29,47 @@ function transformKeysToSnake(obj: any): any {
   );
 }
 
+export class ApiError extends Error {
+  readonly status: number;
+  readonly errors: string[];
+  readonly payload: unknown;
+
+  constructor(message: string, status: number, errors: string[], payload: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.errors = errors;
+    this.payload = payload;
+  }
+}
+
+function extractErrors(payload: unknown): string[] {
+  if (!payload || typeof payload !== 'object') return [];
+  const p = payload as { errors?: unknown; message?: unknown };
+
+  if (Array.isArray(p.errors)) {
+    const list = p.errors.filter((e): e is string => typeof e === 'string' && e.trim().length > 0);
+    if (list.length > 0) return list;
+  }
+
+  if (Array.isArray(p.message)) {
+    const list = p.message.filter((e): e is string => typeof e === 'string' && e.trim().length > 0);
+    if (list.length > 0) return list;
+  }
+
+  if (typeof p.message === 'string' && p.message.trim().length > 0) {
+    return [p.message.trim()];
+  }
+
+  return [];
+}
+
+function resolveMessage(errors: string[], status: number): string {
+  if (errors.length > 0) return errors[0];
+  if (status >= 500) return 'Estamos com uma instabilidade no servidor. Tente novamente em instantes.';
+  return `Erro ${status}. Tente novamente.`;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const token = getToken();
 
@@ -42,8 +83,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Erro desconhecido' }));
-    throw new Error(error.message || `Erro ${res.status}`);
+    const payload = await res.json().catch(() => null);
+    const errors = extractErrors(payload);
+    const message = resolveMessage(errors, res.status);
+    throw new ApiError(message, res.status, errors, payload);
   }
 
   const data = await res.json();
